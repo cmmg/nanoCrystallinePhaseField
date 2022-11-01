@@ -70,14 +70,14 @@ template <class T, int dim>
   
   //Lame parameters
   
-  //std::cout<<"before def grad\n";
+
   for (unsigned int i=0; i<dim; ++i){
     for (unsigned int j=0; j<dim; ++j){
       gradU[i][j]=defMap.F[q][i][j] - (double)(i==j);
       defGrad[i][j]=defMap.F[q][i][j];
     }
   }
-  //std::cout<<"after def grad";
+  
   FullMatrix<double> RCG(dim, dim);
   for(unsigned int i=0;i<dim;i++){
     for(unsigned int j=0;j<dim;j++){
@@ -199,21 +199,7 @@ template <class T, int dim>
 //mechanics residual implementation
 template <int dim>
 void residualForMechanics(FEValues<dim>& fe_values,FEFaceValues<dim> & fe_face_values,const typename DoFHandler<dim>::active_cell_iterator & cell, unsigned int DOF, Table<1, double >& ULocal, Table<1, double>& ULocalConv, deformationMap<double, dim>& defMap, unsigned int currentIteration,  std::vector<historyVariables<dim>* >& history, Vector<double>& RLocal, FullMatrix<double>& KLocal, double fractionalTime, double & freeEnergyMech, std::vector<double>& dF, std::vector<double>&dE, std::vector<double>& dF_dE ,unsigned int & currentIncrement, std::vector<double>& grainAngle, Table<4, double>& ElasticModulus, std::vector<Table<4, double> >& A_phi){
-  /*std::cout<<"\n\n";
-  for(unsigned int N=0;N<n_diff_grains;N++){
-    std::cout<<grainAngle[N]<<"\t";
-  }
-  std::cout<<"\n\n";
-  for(unsigned int i=0;i<dim;i++){
-    for(unsigned int j=0;j<dim;j++){
-      for(unsigned int k=0;k<dim;k++){
-	for(unsigned int l=0;l<dim;l++){
-	  std::cout<<A_phi[1][i][j][k][l]<<"  ";
-	}std::cout<<"\t";
-      }
-    }
-  }
-  exit(-1);*/
+  
   unsigned int dofs_per_cell= fe_values.dofs_per_cell;
   unsigned int n_q_points= fe_values.n_quadrature_points;
   unsigned int n_face_q_points=fe_face_values.n_quadrature_points;
@@ -224,7 +210,6 @@ void residualForMechanics(FEValues<dim>& fe_values,FEFaceValues<dim> & fe_face_v
   if(currentIncrement<=mechanicsStartIncrement) {Mobility_c=10.0*Mobility;}
   if(currentIncrement>mechanicsStartIncrement && currentIncrement<=dragEndIncrement){Mobility_c=0.0;}
   if(currentIncrement>dragEndIncrement){Mobility_c=Mobility;}
-
   //surface boundary condition
   //if(currentIncrement>=3 && currentIncrement<=9){
   /*for(unsigned int faceID=0;faceID<2*dim;faceID++){

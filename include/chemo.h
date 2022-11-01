@@ -42,6 +42,7 @@ void evaluateFieldAtQuadraturePoint(unsigned int q, Table<1, double >&phi, Table
     //dof loop ends
   }
 
+
   double phiSQ=0.;
   for(unsigned int N=0;N<n_diff_grains;N++){
     phiSQ+=phi[N]*phi[N];
@@ -80,10 +81,12 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
    
     double mu=0.0, sol=0.0, sol_conv=0.0;
     evaluateFieldAtQuadraturePoint<dim>( q, phi, phi_conv, phi_j, sol, sol_conv, sol_j, mu , mu_j, fe_values,  DOF,fe_face_values,cell, dt,ULocal,  ULocalConv,  R,local_matrix,  currentIncrement,currentIteration, history, freeEnergyChemBulk, freeEnergyChemGB) ;
+
     if(!isSoluteDrag){
       if(currentIncrement<=mechanicsStartIncrement){M_phi=10.0 * Mobility;}
       if(currentIncrement>mechanicsStartIncrement && currentIncrement<=dragEndIncrement){M_phi=0.0;}
       if(currentIncrement>dragEndIncrement){M_phi=Mobility;}
+      
       for(unsigned int i=0;i<dofs_per_cell;i++){
 	int ci=fe_values.get_fe().system_to_component_index(i).first - DOF;
 	
@@ -96,16 +99,13 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
 	  }
 	  
 	  R[i]+=(1/dt)*fe_values.shape_value(i,q)*(phi[ci]-phi_conv[ci])*fe_values.JxW(q);
-	  //std::cout<<R[i]<<"\t";
+	  
 	  R[i]+=fe_values.shape_value(i,q)*(4./3.)*(M_phi)*(-12.0*phi[ci]*phi[ci]+12.0*phi[ci]*phi2_sum)*fe_values.JxW(q);
-	  //std::cout<<R[i]<<"\t";
+	  
 	  for(unsigned int j=0;j<dim;j++){
 	    R[i]+=(M_phi)*epsilon*fe_values.shape_grad(i,q)[j]*phi_j[ci][j]*fe_values.JxW(q);
-	   
-	  }
-	  
+	  } 
 	}
-	
       }
       
       double g_phi=0., phi2_sum=0., phi3_sum=0.;
@@ -123,20 +123,18 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
 	      if(ca==cb){
 		
 		local_matrix(A,B)+=fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*(1.0/dt)*fe_values.JxW(q);
-		//std::cout<<"\n\n"<<local_matrix(A,B)<<"\t";
-		//std::cout<<fe_values.shape_value(A,q)<<" "<<fe_values.shape_value(B,q)<<" "<<1.0/dt<<" "<<fe_values.JxW(q)<<"\t\t";
 		local_matrix(A,B)+=M_phi*fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*(4./3.)*(-24.0*phi[ca]+12.0*phi2_sum+24.0*phi[ca]*phi[ca])*fe_values.JxW(q);
-		//std::cout<<local_matrix(A,B)<<"\t";
+		
 		for(unsigned int i=0;i<dim;i++){
 		  local_matrix(A,B)+=epsilon*M_phi*fe_values.shape_grad(A,q)[i]*fe_values.shape_grad(B,q)[i]*fe_values.JxW(q);
-		  //std::cout<<local_matrix(A,B)<<"\t";
+		  
 		}
 		
 	      }
 	      else{
 		local_matrix(A,B)+=M_phi*fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*(96.0/3.0)*(phi[ca]*phi[cb])*fe_values.JxW(q);
-		//std::cout<<local_matrix(A,B)<<"\t";
-		//exit(-1);
+		
+		
 	      }
 	      
 	    }//if cj ends
@@ -150,14 +148,7 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
 	
       }//dofs A ends
       
-      /*for(unsigned int i=0;i<dofs_per_cell;i++){
-	for(unsigned int j=0;j<dofs_per_cell;j++){
-	  std::cout<<local_matrix(i,j)<<" ";
-	}std::cout<<"\n";
-      }std::cout<<"\n\n";
-      for(unsigned int i=0;i<dofs_per_cell;i++){
-	std::cout<<R[i]<<" ";
-      }exit(-1);*/
+
       
     } // !isSoluteDrag statement ends here
 
@@ -166,21 +157,21 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
       double W_sol=0.;
       W_sol=WA*(1.-sol) + WB*(sol);
       if(currentIncrement<=mechanicsStartIncrement){
-	W_sol=1.0;
-	M_phi=10.0*Mobility;
-	//M_sol=0.;
+	W_sol=1.0; 
+	//M_sol=0.0; 
+	M_phi=10.0 * Mobility;
       }
       if(currentIncrement>mechanicsStartIncrement && currentIncrement<=dragEndIncrement){
-	M_phi=0.0;// M_sol=M_alpha;
+        M_phi=0.0;// M_sol=M_alpha;                                                                        
       }
       if(currentIncrement>dragEndIncrement){
-	M_phi=Mobility;
-	//M_sol=M_alpha;
+        M_phi=Mobility;
+        //M_sol=M_alpha;                                                                         
       }
       if(currentIncrement<dragStartIncrement){M_sol=0.0;}
       if(currentIncrement>=dragStartIncrement && currentIncrement<=dragEndIncrement){M_sol=M_alpha;}
-      if(currentIncrement> dragEndIncrement){M_sol=(1.0)*M_alpha;}
-      
+      if(currentIncrement> dragEndIncrement){M_sol=(0.0)*M_alpha;}
+
 
       for(unsigned int A=0;A<dofs_per_cell;A++){
 	unsigned int ca=fe_values.get_fe().system_to_component_index(A).first- DOF;
@@ -198,26 +189,24 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
 	
 	if(ca==n_diff_grains){
 	  R[A]+=(1./dt)* (sol-sol_conv)*fe_values.shape_value(A,q)*fe_values.JxW(q);
-	  
 	  for(unsigned int j=0;j<dim;j++){
-	    R[A]+=M_sol*sol*(1.0-sol)*fe_values.shape_grad(A,q)[j]*mu_j[j]*fe_values.JxW(q);
+	    R[A]+=M_sol*fe_values.shape_grad(A,q)[j]*mu_j[j]*fe_values.JxW(q);
 	  }
 	}//ca == n_diff_grains ends here
 
 	if(ca==n_diff_grains+1){
-	  R[A]+=fe_values.shape_value(A,q)*mu*fe_values.JxW(q);
-
-        double var=0.0;
-        var=(GA-GB)+ log(sol/(1-sol));
-        R[A]-=fe_values.shape_value(A,q)*var*fe_values.JxW(q);
-
-        double g_phi=0.0, phi3sum=0.0, phi2sum=0.0;
-        for(unsigned int N=0;N<n_diff_grains;N++){
-          phi2sum+=phi[N]*phi[N];
-          phi3sum+=phi[N]*phi[N]*phi[N];
-        }
-        g_phi=(4./3.)*(1.0- 4.0*phi3sum + 3.0* phi2sum*phi2sum);
-        R[A]-=fe_values.shape_value(A,q)*g_phi*(WB-WA)*fe_values.JxW(q);
+	  double g_phi=0., phi2Sum=0., phi3Sum=0.;
+	  for(unsigned int i=0;i<n_diff_grains;i++){
+	    phi2Sum+=phi[i]*phi[i];
+	    phi3Sum+=phi[i]*phi[i]*phi[i];
+	  }
+	  g_phi=(4./3.)*(1.0- 4.0* phi3Sum + 3.0 * phi2Sum*phi2Sum);
+	  //solute energy double well G
+	  double dG_dsol= 800*sol*(sol-1.0)*(sol-0.5)+ g_phi*(WB-WA);//(-4.0*sol-5);
+	  R[A]+=fe_values.shape_value(A,q)* (mu-dG_dsol)*fe_values.JxW(q);
+	  for(unsigned int j=0;j<dim;j++){
+	    R[A]-=kappa*fe_values.shape_grad(A,q)[j]*sol_j[j]*fe_values.JxW(q);
+	  }
 
 	}//ca==n_diff_grains+1 ends here
 
@@ -232,74 +221,75 @@ void residualForChemo(FEValues<dim>& fe_values, unsigned int DOF, FEFaceValues<d
 	  if(ca>=0 && ca<n_diff_grains){
 	    if(cb>=0 && cb<n_diff_grains){
 	      if(ca==cb){
-		double phi2sum=0.;
-              for(unsigned int I=0;I<n_diff_grains;I++){
-                phi2sum+= phi[I]*phi[I];
-              }
-              local_matrix[A][B]+= fe_values.shape_value(A,q)*fe_values.shape_value(B,q)* (1.0/dt) * fe_values.JxW(q);
-              local_matrix[B][B]+= M_phi* W_sol * (4./3.)* (-24.0 * phi[ca] + 24.0* phi[ca]*phi[ca] + 12.0 * phi2sum)*fe_values.shape_value(A,q)*fe_values.shape_value(B,q)* fe_values.JxW(q);
-              for(unsigned int j=0;j<dim;j++){
-                local_matrix[A][B]+= M_phi * epsilon * W_sol * fe_values.shape_grad(A,q)[j] * fe_values.shape_grad(B,q)[j]* fe_values.JxW(q);
-              }
-	      	
+		local_matrix(A,B)+=(1.0/dt)*fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*fe_values.JxW(q);
+		double fValue=0.0, phi2sum=0.0;
+		for (unsigned int i=0;i<n_diff_grains;i++){
+		  phi2sum+=phi[i]*phi[i];//here                                                     
+		}
+		fValue=(4./3.)* (-24.0*phi[ca]+24.0*phi[ca]*phi[ca] + 12.0* phi2sum  );
+		local_matrix(A,B)+=M_phi* W_sol * fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*fValue*fe_values.JxW(q);
+		for(unsigned int j=0;j<dim;j++){
+		  local_matrix(A,B)+=M_phi * epsilon * W_sol * fe_values.shape_grad(A,q)[j]*fe_values.shape_grad(B,q)[j]*fe_values.JxW(q);
+		}
 	      }//ca==cb ends here
 	      else{
-		local_matrix[A][B]+= M_phi * W_sol * (4./3.) * (24.0 * phi[ca]* phi[cb]) * fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*fe_values.JxW(q);
+		local_matrix(A,B)+=M_phi*W_sol * fe_values.shape_value(A,q)* fe_values.shape_value(B,q)* (32.0)* phi[ca]*phi[cb]*fe_values.JxW(q);
 	      }//ca!=cb ends here
 	    }//cb<n_diff_grains ends here
 	    
 	    if(cb==n_diff_grains){
-	      double phi2sum=0.;
-	      for(unsigned int I=0;I<n_diff_grains;I++){
-		phi2sum+= phi[I]*phi[I];
+	      double phi2sum=0.0;
+	      for(unsigned int i=0;i<n_diff_grains;i++){
+		phi2sum+=phi[i]*phi[i];
 	      }
-	      local_matrix[A][B]+= M_phi * (WB-WA) * fe_values.shape_value(A,q) *(4./3.)* (-12.0 * phi[ca]*phi[ca]+  12.0 * phi[ca] * phi2sum)*fe_values.shape_value(B,q)* fe_values.JxW(q);
-	      //std::cout<<local_matrix[A][B]<<" ";                                                       
+	      local_matrix(A,B)+=M_phi * (WB - WA) * fe_values.shape_value(A,q)* fe_values.shape_value(B,q)*(4.0/3.0)* (-12.0 *phi[ca]*phi[ca]+ 12.0 * phi[ca]*phi2sum )*fe_values.JxW(q);
 	      for(unsigned int j=0;j<dim;j++){
-		local_matrix[A][B]+= M_phi * epsilon * (WB-WA) * fe_values.shape_value(B,q)* fe_values.shape_grad(A,q)[j]*phi_j[ca][j]*fe_values.JxW(q);	      
+		local_matrix(A,B)+=M_phi * epsilon *fe_values.shape_value(B,q)* (WB-WA) *fe_values.shape_grad(A,q)[j]*phi_j[ca][j]*fe_values.JxW(q) ;
 	      }
-	      
+
 	    }//cb==n_diff_grains
 	    
 	    if(cb==n_diff_grains+1){
-	      local_matrix[A][B]+=0.;
+	      local_matrix(A,B)+=0.0;
 	    }//cb==n_diff_grains+1
 	    
 	  }//ca<n_diff_grains ends here
 	  
 	  if(ca==n_diff_grains){
 	    if(cb>=0 && cb<n_diff_grains){
-	     local_matrix[A][B]+=0.;
+	      local_matrix(A,B)+=0.0;
 	    }//cb>=0 && cb<n_diff_grains ends here
 	    if(cb==n_diff_grains){
-	      local_matrix[A][B]+= fe_values.shape_value(A,q)*fe_values.shape_value(B,q)* (1.0/dt)*fe_values.JxW(q);
-	      for(unsigned int j=0;j<dim;j++){
-		local_matrix[A][B]+= M_sol * (1.0-2.0*sol) * fe_values.shape_value(B,q) * fe_values.shape_grad(A,q)[j] * mu_j[j] * fe_values.JxW(q);
-	      }
+	      local_matrix(A,B)+=(1.0/dt)* fe_values.shape_value(A,q) * fe_values.shape_value(B,q) * fe_values.JxW(q);
 	    }//cb==n_diff_grains ends here
 	    if(cb==n_diff_grains+1){
 	      for(unsigned int j=0;j<dim;j++){
-		local_matrix[A][B]+= M_sol * sol * (1.0-sol) * fe_values.shape_grad(A,q)[j] * fe_values.shape_grad(B,q)[j] * fe_values.JxW(q);
+		local_matrix(A,B)+=M_sol * fe_values.shape_grad(A,q)[j]* fe_values.shape_grad(B,q)[j]*fe_values.JxW(q) ;
 	      }
 	    }//cb==n_diff_grains+1
 	  
 	  }//ca==n_diff_grains ends here
-	  
+
 	  if(ca==n_diff_grains+1){
 	    if(cb>=0 && cb<n_diff_grains){
-	      double Dg_Dphi=0.; double phi2sum=0.;
-	      for(unsigned int I=0;I<n_diff_grains;I++){
-		phi2sum+= phi[I]*phi[I];
+	      double phi2sum=0.0, value=0.0;
+	      for(unsigned int i=0;i<n_diff_grains;i++){
+		phi2sum+=phi[i]*phi[i];
 	      }
-	      local_matrix[A][B]+= - fe_values.shape_value(A,q) * (4./3.) * (-12.0 *phi[cb] + 12.0 * phi2sum * phi[cb] ) * fe_values.shape_value(B,q) * (WB-WA) * fe_values.JxW(q);
+	      value=(4.0/3.0) * (-12.0 * phi[cb]*phi[cb] + 12.0 * phi[cb]*phi2sum);
+	      local_matrix(A,B)-=fe_values.shape_value(A,q)*fe_values.shape_value(B,q) * value * (WB - WA)*fe_values.JxW(q);//here jacobian changed from + to -
 	    }//cb<n_diff_grains ends here
 	    if(cb==n_diff_grains){
-	      local_matrix[A][B]+= - fe_values.shape_value(A,q) * fe_values.shape_value(B,q) * (1.0/sol + 1.0/(1.0-sol))*fe_values.JxW(q);
-	      
+	      double value=0.0;
+	      value=800 * (sol * (sol-0.5) + sol*(sol-1.0) + (sol-0.5)*(sol-1.0));
+	      local_matrix(A,B)+= (-1.0)* fe_values.shape_value(A,q)*fe_values.shape_value(B,q) * value * fe_values.JxW(q);
+	      for(unsigned int j=0;j<dim;j++){
+		local_matrix(A,B)+=(-1.0)*kappa * fe_values.shape_grad(A,q)[j] * fe_values.shape_grad(B,q)[j]*fe_values.JxW(q);
+	      }
 	    }//cb==n_diff_grains ends here
 	    
 	    if(cb==n_diff_grains+1){
-	      local_matrix[A][B]+= fe_values.JxW(q) * fe_values.shape_value(A,q) * fe_values.shape_value(B,q);
+	      local_matrix(A,B)+=fe_values.shape_value(A,q)*fe_values.shape_value(B,q)*fe_values.JxW(q);
 	    }//cb==n_diff_grains
 	    
 	  }//ca==n_diff_grains+1 ends here
